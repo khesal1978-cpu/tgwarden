@@ -1,8 +1,8 @@
 function setupWelcome(bot) {
     bot.on('new_chat_members', async (ctx) => {
         try {
-            const row = await ctx.dbAsync.get('SELECT welcome_message, welcome_enabled FROM group_settings WHERE chat_id = ?', [ctx.chat.id]);
-            const settings = row || { welcome_message: 'Welcome to the group, {name}!', welcome_enabled: 0 };
+            const row = await ctx.dbAsync.get('SELECT welcome_message, welcome_enabled, welcome_photo_id FROM group_settings WHERE chat_id = ?', [ctx.chat.id]);
+            const settings = row || { welcome_message: 'Welcome to the group, {name}!', welcome_enabled: 0, welcome_photo_id: null };
 
             for (const member of ctx.message.new_chat_members) {
                 if (member.is_bot) continue;
@@ -24,31 +24,21 @@ function setupWelcome(bot) {
 
                 if (settings.welcome_enabled) {
                     const name = member.first_name || 'Member';
-                    let rawMessage = settings.welcome_message.replace(/{name}/g, name);
-                    
-                    let text = rawMessage;
-                    let replyMarkup = {};
+                    let text = settings.welcome_message.replace(/{name}/g, name);
 
-                    // Parse inline button syntax: Text || Button Name | URL
-                    if (rawMessage.includes('||')) {
-                        const parts = rawMessage.split('||');
-                        text = parts[0].trim();
-                        const btnData = parts[1].trim();
-                        
-                        if (btnData.includes('|')) {
-                            const btnParts = btnData.split('|');
-                            const btnName = btnParts[0].trim();
-                            const btnUrl = btnParts.slice(1).join('|').trim(); // Join rest in case URL has |
-                            
-                            if (btnName && btnUrl) {
-                                replyMarkup = {
-                                    inline_keyboard: [[{ text: btnName, url: btnUrl }]]
-                                };
-                            }
-                        }
+                    let msg;
+                    if (settings.welcome_photo_id) {
+                        msg = await bot.telegram.sendPhoto(ctx.chat.id, settings.welcome_photo_id, { caption: text }).catch(e => console.error("Photo welcome error:", e));
+                    } else {
+                        msg = await bot.telegram.sendMessage(ctx.chat.id, text).catch(e => console.error("Text welcome error:", e));
                     }
 
-                    ctx.reply(text, { reply_markup: replyMarkup.inline_keyboard ? replyMarkup : undefined });
+                    // Auto-delete welcome message after 16 seconds
+                    if (msg && msg.message_id) {
+                        setTimeout(() => {
+                            ctx.deleteMessage(msg.message_id).catch(()=>{});
+                        }, 16000);
+                    }
                 }
             }
             // Delete the "User joined" service message from the chat

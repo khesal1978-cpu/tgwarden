@@ -14,16 +14,17 @@ function setupSettings(bot) {
         if (!(await checkAdmin(ctx))) return ctx.reply('Only admins can view settings.');
 
         ctx.db.get('SELECT * FROM group_settings WHERE chat_id = ?', [ctx.chat.id], (err, row) => {
-            // Welcome enabled is 0 by default now, as requested.
             const settings = row || {
                 welcome_message: 'Welcome to the group!',
-                welcome_enabled: 0
+                welcome_enabled: 0,
+                welcome_photo_id: null
             };
 
             const text = `⚙️ **Group Settings**\n\n` +
                          `🛡️ **Security Profile: ACTIVE (Auto)**\n` +
                          `*(Anti-Spam, Links, Bio-Links, Service Msgs, and Promo Checks are wiped automatically)*\n\n` +
                          `👋 **Welcome Message On:** ${settings.welcome_enabled ? '✅' : '❌'}\n` +
+                         `📷 **Attached Photo:** ${settings.welcome_photo_id ? '✅ Yes' : '❌ No'}\n` +
                          `**Message:** ${settings.welcome_message}\n\n` +
                          `*To change, use /setwelcome or /togglewelcome*`;
 
@@ -34,11 +35,20 @@ function setupSettings(bot) {
     bot.command('setwelcome', async (ctx) => {
         if (!(await checkAdmin(ctx))) return;
         const msg = ctx.message.text.split(' ').slice(1).join(' ');
-        if (!msg) return ctx.reply('Format: /setwelcome Hello {name}! || Button Name | https://link.com');
+        
+        let photo_id = null;
+        if (ctx.message.reply_to_message && ctx.message.reply_to_message.photo) {
+            const photoArray = ctx.message.reply_to_message.photo;
+            photo_id = photoArray[photoArray.length - 1].file_id;
+        }
 
-        ctx.db.run(`INSERT INTO group_settings (chat_id, welcome_message) VALUES (?, ?) 
-                    ON CONFLICT(chat_id) DO UPDATE SET welcome_message=excluded.welcome_message`, 
-                    [ctx.chat.id, msg], (err) => {
+        if (!msg && !photo_id) return ctx.reply('Format: /setwelcome Hello {name}!\n(You can also reply to a photo with /setwelcome to attach it!)');
+
+        const textToSave = msg || 'Welcome {name}!';
+
+        ctx.db.run(`INSERT INTO group_settings (chat_id, welcome_message, welcome_photo_id) VALUES (?, ?, ?) 
+                    ON CONFLICT(chat_id) DO UPDATE SET welcome_message=excluded.welcome_message, welcome_photo_id=excluded.welcome_photo_id`, 
+                    [ctx.chat.id, textToSave, photo_id], (err) => {
             if (err) return ctx.reply('Error saving settings.');
             ctx.reply('Welcome message updated! Turn it on with /togglewelcome if it is off.');
         });

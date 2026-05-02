@@ -1,3 +1,5 @@
+const { dbAsync } = require('../database');
+
 async function checkAdmin(ctx) {
     if (ctx.chat.type === 'private') return true;
     try {
@@ -54,7 +56,7 @@ function setupRepeater(bot) {
     // Start existing repeats from the database on bot boot
     setTimeout(async () => {
         try {
-            const rows = await bot.context.dbAsync.all('SELECT * FROM group_repeats');
+            const rows = await dbAsync.all('SELECT * FROM group_repeats');
             for (const row of rows) {
                 if (!row.message_data) continue;
                 activeIntervals[row.chat_id] = setInterval(() => {

@@ -21,8 +21,13 @@ function initDb() {
         delete_service_messages BOOLEAN DEFAULT 1,
         welcome_enabled BOOLEAN DEFAULT 1,
         rules TEXT DEFAULT 'No rules set yet.',
-        restrict_bio_links BOOLEAN DEFAULT 0
+        restrict_bio_links BOOLEAN DEFAULT 0,
+        welcome_photo_id TEXT
     )`);
+
+    db.run(`ALTER TABLE group_settings ADD COLUMN welcome_photo_id TEXT`, (err) => {
+        // Ignore error if column already exists (e.g., if user already has a local DB)
+    });
 
     db.run(`CREATE TABLE IF NOT EXISTS warnings (
         user_id TEXT,
