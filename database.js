@@ -77,11 +77,11 @@ function initDb() {
         delete_at INTEGER
     )`);
 
-    // Recurring messages
+    // Recurring messages (supports media via JSON string)
     db.run(`CREATE TABLE IF NOT EXISTS group_repeats (
         chat_id TEXT PRIMARY KEY,
         interval_ms INTEGER,
-        message TEXT
+        message_data TEXT
     )`);
 }
 

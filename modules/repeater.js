@@ -23,16 +23,42 @@ function parseTime(timeStr) {
 
 const activeIntervals = {};
 
+async function sendRepeatingMessage(bot, chat_id, message_data) {
+    try {
+        const data = JSON.parse(message_data);
+        const options = { 
+            reply_markup: data.reply_markup 
+        };
+        
+        if (data.type === 'text') {
+            options.entities = data.entities;
+            await bot.telegram.sendMessage(chat_id, data.content, options);
+        } else {
+            options.caption = data.caption;
+            options.caption_entities = data.caption_entities;
+
+            if (data.type === 'photo') await bot.telegram.sendPhoto(chat_id, data.file_id, options);
+            else if (data.type === 'video') await bot.telegram.sendVideo(chat_id, data.file_id, options);
+            else if (data.type === 'animation') await bot.telegram.sendAnimation(chat_id, data.file_id, options);
+            else if (data.type === 'sticker') await bot.telegram.sendSticker(chat_id, data.file_id, { reply_markup: data.reply_markup });
+            else if (data.type === 'document') await bot.telegram.sendDocument(chat_id, data.file_id, options);
+            else if (data.type === 'audio') await bot.telegram.sendAudio(chat_id, data.file_id, options);
+            else if (data.type === 'voice') await bot.telegram.sendVoice(chat_id, data.file_id, options);
+        }
+    } catch (e) {
+        console.log(`Failed to send repeating message to ${chat_id}:`, e.message);
+    }
+}
+
 function setupRepeater(bot) {
     // Start existing repeats from the database on bot boot
     setTimeout(async () => {
         try {
             const rows = await bot.context.dbAsync.all('SELECT * FROM group_repeats');
             for (const row of rows) {
+                if (!row.message_data) continue;
                 activeIntervals[row.chat_id] = setInterval(() => {
-                    bot.telegram.sendMessage(row.chat_id, row.message).catch(err => {
-                        console.log(`Failed to send repeating message to ${row.chat_id}:`, err.message);
-                    });
+                    sendRepeatingMessage(bot, row.chat_id, row.message_data);
                 }, row.interval_ms);
             }
             console.log(`[Repeater] Restored ${rows.length} repeating messages from database.`);
@@ -46,7 +72,7 @@ function setupRepeater(bot) {
         if (ctx.chat.type === 'private') return ctx.reply('This command can only be used in groups.');
 
         const args = ctx.message.text.split(' ');
-        if (args.length < 3) return ctx.reply('Format: /repeat <time> <message>\nExample: /repeat 1h Read our rules!');
+        if (args.length < 2) return ctx.reply('Format: Reply to a message/media with /repeat <time>\nExample: /repeat 30m');
 
         const timeStr = args[1].toLowerCase();
         const interval_ms = parseTime(timeStr);
@@ -57,13 +83,40 @@ function setupRepeater(bot) {
             return ctx.reply('To prevent spam, the minimum repeat interval is 5 minutes (5m).');
         }
 
-        const message = args.slice(2).join(' ');
+        let msgData = null;
+
+        // If they replied to a message, parse the media
+        if (ctx.message.reply_to_message) {
+            const rm = ctx.message.reply_to_message;
+            if (rm.text) msgData = { type: 'text', content: rm.text, entities: rm.entities };
+            else if (rm.photo) msgData = { type: 'photo', file_id: rm.photo[rm.photo.length-1].file_id, caption: rm.caption, caption_entities: rm.caption_entities };
+            else if (rm.video) msgData = { type: 'video', file_id: rm.video.file_id, caption: rm.caption, caption_entities: rm.caption_entities };
+            else if (rm.animation) msgData = { type: 'animation', file_id: rm.animation.file_id, caption: rm.caption, caption_entities: rm.caption_entities };
+            else if (rm.sticker) msgData = { type: 'sticker', file_id: rm.sticker.file_id };
+            else if (rm.document) msgData = { type: 'document', file_id: rm.document.file_id, caption: rm.caption, caption_entities: rm.caption_entities };
+            else if (rm.audio) msgData = { type: 'audio', file_id: rm.audio.file_id, caption: rm.caption, caption_entities: rm.caption_entities };
+            else if (rm.voice) msgData = { type: 'voice', file_id: rm.voice.file_id, caption: rm.caption, caption_entities: rm.caption_entities };
+            
+            // Preserve inline keyboards if the original message had them
+            if (rm.reply_markup) {
+                msgData.reply_markup = rm.reply_markup;
+            }
+        } else {
+            // No reply, just use the text provided after the time
+            const textContent = args.slice(2).join(' ');
+            if (!textContent) return ctx.reply('You must either reply to a message/media, or provide text: /repeat 1h Hello!');
+            msgData = { type: 'text', content: textContent };
+        }
+
+        if (!msgData) return ctx.reply('Unsupported message type for repeating.');
+
+        const messageDataString = JSON.stringify(msgData);
 
         try {
             // Save to DB
-            await ctx.dbAsync.run(`INSERT INTO group_repeats (chat_id, interval_ms, message) VALUES (?, ?, ?) 
-                        ON CONFLICT(chat_id) DO UPDATE SET interval_ms=excluded.interval_ms, message=excluded.message`, 
-                        [ctx.chat.id, interval_ms, message]);
+            await ctx.dbAsync.run(`INSERT INTO group_repeats (chat_id, interval_ms, message_data) VALUES (?, ?, ?) 
+                        ON CONFLICT(chat_id) DO UPDATE SET interval_ms=excluded.interval_ms, message_data=excluded.message_data`, 
+                        [ctx.chat.id, interval_ms, messageDataString]);
             
             // Clear existing interval if there is one
             if (activeIntervals[ctx.chat.id]) {
@@ -72,12 +125,10 @@ function setupRepeater(bot) {
 
             // Start new interval
             activeIntervals[ctx.chat.id] = setInterval(() => {
-                ctx.telegram.sendMessage(ctx.chat.id, message).catch(err => {
-                    console.log(`Failed to send repeating message to ${ctx.chat.id}:`, err.message);
-                });
+                sendRepeatingMessage(bot, ctx.chat.id, messageDataString);
             }, interval_ms);
 
-            ctx.reply(`✅ Repeating message scheduled. It will be sent every ${timeStr}.`);
+            ctx.reply(`✅ Repeating media/message scheduled. It will be sent every ${timeStr}.`);
 
         } catch (e) {
             ctx.reply('Error saving recurring message.');
