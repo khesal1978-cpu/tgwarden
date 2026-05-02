@@ -76,6 +76,13 @@ function initDb() {
         message_id INTEGER,
         delete_at INTEGER
     )`);
+
+    // Recurring messages
+    db.run(`CREATE TABLE IF NOT EXISTS group_repeats (
+        chat_id TEXT PRIMARY KEY,
+        interval_ms INTEGER,
+        message TEXT
+    )`);
 }
 
 // Wrapper for Promises to make async queries easier
