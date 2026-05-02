@@ -76,7 +76,30 @@ setupAutoDelete(bot);
 setupAntiSpam(bot); // Catch-all middleware
 
 bot.start((ctx) => {
-    ctx.reply('Hello! I am **TG Warden**, an advanced Telegram Group Manager. Add me to a group and promote me to admin to secure your chat!', { parse_mode: 'Markdown' });
+    const text = `🛡️ **Welcome to TG Warden!** 🛡️
+
+I am an elite, enterprise-grade Telegram Group Manager designed to keep your communities absolutely spotless.
+
+**✨ Core Features:**
+• **100% Automatic Security:** Instantly deletes links, hashtags, and bot commands from non-admins.
+• **Bio-Link Bans:** Automatically bans any user joining with a promotional link in their bio.
+• **Promotional Auto-Kick:** Detects spam words (buy/sell), issues warnings, and auto-kicks at 3 warnings.
+• **Media Locks:** Granular control to lock photos, stickers, voices, and more.
+• **Ghost Sweeper:** Silently removes annoying "User joined" or "Message pinned" service notifications.
+• **Ephemeral Mode:** Set a global timer (e.g. \`/setdelay 5m\`) to automatically wipe all chat history.
+• **Custom Auto-Replies:** Create custom triggers and interactive welcome messages.
+
+**🚀 How to use:**
+1. Add me to your group.
+2. Promote me to **Administrator** (Ensure I have permissions to Delete Messages and Ban Users).
+3. Type \`/fuck\` in your group to open the Master Control Panel!`;
+
+    ctx.reply(text, { 
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [[{ text: '➕ Add TG Warden to your Group', url: `https://t.me/${ctx.botInfo.username}?startgroup=true` }]]
+        }
+    });
 });
 
 // Helper to check admin status for the /fuck command
@@ -94,7 +117,7 @@ const menus = {
     main: `⚡ **Bot Control Panel** ⚡\n\nSelect a category below to view commands:`,
     mod: `🛡️ **Moderation Commands**\n\n/ban - Perma ban\n/tban 1d - Temp ban\n/sban - Silent ban\n/kick - Kick user\n/mute - Perma mute\n/tmute 2h - Temp mute\n/smute - Silent mute\n/warn - Issue warning\n/unban - Unban user\n/unmute - Unmute user`,
     locks: `🔒 **Media Locks**\n\n/lock audio | /unlock audio\n/lock voice | /unlock voice\n/lock video | /unlock video\n/lock photo | /unlock photo\n/lock document | /unlock document\n/lock sticker | /unlock sticker\n/lock gif | /unlock gif\n/lock forward | /unlock forward\n/lock url | /unlock url`,
-    settings: `📝 **Settings & Auto-Replies**\n\n/filter <word> <reply> - Add trigger\n/stop <word> - Remove trigger\n/save <name> <text> - Add note\n/clear <name> - Remove note\n\n/settings - View configuration\n/blacklist <word> - Auto-delete word\n\n🛡️ **100% Automatic Security (Always ON)**\n• No Links (HTTP, Telegram, etc.)\n• No Hashtags (#)\n• No Bot Commands (for regular members)\n• No Bio-Links (Auto-Ban on Join)\n• No Service Msgs (Joined, left, pinned)\n• No Promotional Words (buy, sell, discount) -> Auto-Warning & Kick at 3`,
+    settings: `📝 **Settings & Auto-Replies**\n\n/filter <word> <reply> - Add trigger\n/stop <word> - Remove trigger\n/save <name> <text> - Add note\n/clear <name> - Remove note\n\n/settings - View configuration\n/setwelcome <text> || <Button Name> | <URL> - Set custom greeting (button is optional)\n/togglewelcome - Welcome on/off\n/blacklist <word> - Auto-delete word\n\n🛡️ **100% Automatic Security (Always ON)**\n• No Links (HTTP, Telegram, etc.)\n• No Hashtags (#)\n• No Bot Commands (for regular members)\n• No Bio-Links (Auto-Ban on Join)\n• No Service Msgs (Joined, left, pinned)\n• No Promotional Words (buy, sell, discount) -> Auto-Warning & Kick at 3`,
     autodelete: `🧹 **Auto-Deleter**\n\n/setdelay 5m - Wipe chat every 5m\n/stopdelay - Disable wipe`
 };
 
