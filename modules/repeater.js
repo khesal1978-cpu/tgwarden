@@ -32,20 +32,28 @@ async function sendRepeatingMessage(bot, chat_id, message_data) {
             reply_markup: data.reply_markup 
         };
         
+        let msg = null;
         if (data.type === 'text') {
             options.entities = data.entities;
-            await bot.telegram.sendMessage(chat_id, data.content, options);
+            msg = await bot.telegram.sendMessage(chat_id, data.content, options);
         } else {
             options.caption = data.caption;
             options.caption_entities = data.caption_entities;
 
-            if (data.type === 'photo') await bot.telegram.sendPhoto(chat_id, data.file_id, options);
-            else if (data.type === 'video') await bot.telegram.sendVideo(chat_id, data.file_id, options);
-            else if (data.type === 'animation') await bot.telegram.sendAnimation(chat_id, data.file_id, options);
-            else if (data.type === 'sticker') await bot.telegram.sendSticker(chat_id, data.file_id, { reply_markup: data.reply_markup });
-            else if (data.type === 'document') await bot.telegram.sendDocument(chat_id, data.file_id, options);
-            else if (data.type === 'audio') await bot.telegram.sendAudio(chat_id, data.file_id, options);
-            else if (data.type === 'voice') await bot.telegram.sendVoice(chat_id, data.file_id, options);
+            if (data.type === 'photo') msg = await bot.telegram.sendPhoto(chat_id, data.file_id, options);
+            else if (data.type === 'video') msg = await bot.telegram.sendVideo(chat_id, data.file_id, options);
+            else if (data.type === 'animation') msg = await bot.telegram.sendAnimation(chat_id, data.file_id, options);
+            else if (data.type === 'sticker') msg = await bot.telegram.sendSticker(chat_id, data.file_id, { reply_markup: data.reply_markup });
+            else if (data.type === 'document') msg = await bot.telegram.sendDocument(chat_id, data.file_id, options);
+            else if (data.type === 'audio') msg = await bot.telegram.sendAudio(chat_id, data.file_id, options);
+            else if (data.type === 'voice') msg = await bot.telegram.sendVoice(chat_id, data.file_id, options);
+        }
+
+        // Auto-delete the repeated message after exactly 10 minutes (600,000 ms)
+        if (msg && msg.message_id) {
+            setTimeout(() => {
+                bot.telegram.deleteMessage(chat_id, msg.message_id).catch(()=>{});
+            }, 600000);
         }
     } catch (e) {
         console.log(`Failed to send repeating message to ${chat_id}:`, e.message);
