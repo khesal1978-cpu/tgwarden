@@ -1,5 +1,18 @@
 // Anti-spam module with Blacklist support
 function setupAntiSpam(bot) {
+    // Automatically delete all service messages (left, pin, photo change, etc)
+    const serviceEvents = [
+        'left_chat_member', 
+        'new_chat_title', 
+        'new_chat_photo', 
+        'delete_chat_photo', 
+        'pinned_message'
+    ];
+    bot.on(serviceEvents, async (ctx, next) => {
+        await ctx.deleteMessage().catch(()=>{});
+        return next();
+    });
+
     bot.command('blacklist', async (ctx) => {
         // Admin check
         try {
@@ -46,19 +59,6 @@ function setupAntiSpam(bot) {
 
         try {
             let shouldDelete = false;
-
-            // Service Message Deletion (ALWAYS ON)
-            const isServiceMsg = ctx.message.new_chat_members || 
-                                 ctx.message.left_chat_member ||
-                                 ctx.message.new_chat_title ||
-                                 ctx.message.new_chat_photo ||
-                                 ctx.message.delete_chat_photo ||
-                                 ctx.message.pinned_message;
-                                 
-            if (isServiceMsg) {
-                await ctx.deleteMessage().catch(()=>{});
-                return; 
-            }
 
             const text = (ctx.message.text || ctx.message.caption || '').toLowerCase();
 

@@ -28,6 +28,8 @@ function setupWelcome(bot) {
                     ctx.reply(message);
                 }
             }
+            // Delete the "User joined" service message from the chat
+            await ctx.deleteMessage().catch(()=>{});
         } catch(e) {
             console.error(e);
         }
