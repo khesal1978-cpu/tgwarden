@@ -88,9 +88,9 @@ function setupRepeater(bot) {
         const interval_ms = parseTime(timeStr);
         if (!interval_ms) return ctx.reply('Invalid time format. Use s, m, h, or d (e.g., 30m, 2h).');
 
-        // Prevent spammy limits (minimum 5 minutes)
-        if (interval_ms < 300000) {
-            return ctx.reply('To prevent spam, the minimum repeat interval is 5 minutes (5m).');
+        // Prevent spammy limits (minimum 1 minute)
+        if (interval_ms < 60000) {
+            return ctx.reply('To prevent spam, the minimum repeat interval is 1 minute (1m).');
         }
 
         let msgData = null;

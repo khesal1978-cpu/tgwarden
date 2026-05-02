@@ -28,7 +28,25 @@ function setupWelcome(bot) {
 
                     let msg;
                     if (settings.welcome_photo_id) {
-                        msg = await bot.telegram.sendPhoto(ctx.chat.id, settings.welcome_photo_id, { caption: text }).catch(e => console.error("Photo welcome error:", e));
+                        try {
+                            const media = JSON.parse(settings.welcome_photo_id);
+                            if (media.type === 'photo') msg = await bot.telegram.sendPhoto(ctx.chat.id, media.file_id, { caption: text }).catch(e => console.error(e));
+                            else if (media.type === 'sticker') {
+                                msg = await bot.telegram.sendSticker(ctx.chat.id, media.file_id).catch(e => console.error(e));
+                                // Stickers can't have captions natively, so if there's custom text, send it separately
+                                if (settings.welcome_message !== 'Welcome {name}!' && text.trim() !== '') {
+                                    const textMsg = await bot.telegram.sendMessage(ctx.chat.id, text).catch(e => console.error(e));
+                                    if (textMsg && textMsg.message_id) {
+                                        setTimeout(() => { ctx.deleteMessage(textMsg.message_id).catch(()=>{}); }, 16000);
+                                    }
+                                }
+                            }
+                            else if (media.type === 'video') msg = await bot.telegram.sendVideo(ctx.chat.id, media.file_id, { caption: text }).catch(e => console.error(e));
+                            else if (media.type === 'animation') msg = await bot.telegram.sendAnimation(ctx.chat.id, media.file_id, { caption: text }).catch(e => console.error(e));
+                        } catch(e) {
+                            // Legacy: if it's not JSON, it was saved as a raw photo ID previously
+                            msg = await bot.telegram.sendPhoto(ctx.chat.id, settings.welcome_photo_id, { caption: text }).catch(err => console.error("Legacy photo error:", err));
+                        }
                     } else {
                         msg = await bot.telegram.sendMessage(ctx.chat.id, text).catch(e => console.error("Text welcome error:", e));
                     }

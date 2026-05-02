@@ -24,7 +24,7 @@ function setupSettings(bot) {
                          `🛡️ **Security Profile: ACTIVE (Auto)**\n` +
                          `*(Anti-Spam, Links, Bio-Links, Service Msgs, and Promo Checks are wiped automatically)*\n\n` +
                          `👋 **Welcome Message On:** ${settings.welcome_enabled ? '✅' : '❌'}\n` +
-                         `📷 **Attached Photo:** ${settings.welcome_photo_id ? '✅ Yes' : '❌ No'}\n` +
+                         `📷 **Attached Media:** ${settings.welcome_photo_id ? '✅ Yes' : '❌ No'}\n` +
                          `**Message:** ${settings.welcome_message}\n\n` +
                          `*To change, use /setwelcome or /togglewelcome*`;
 
@@ -36,19 +36,22 @@ function setupSettings(bot) {
         if (!(await checkAdmin(ctx))) return;
         const msg = ctx.message.text.split(' ').slice(1).join(' ');
         
-        let photo_id = null;
-        if (ctx.message.reply_to_message && ctx.message.reply_to_message.photo) {
-            const photoArray = ctx.message.reply_to_message.photo;
-            photo_id = photoArray[photoArray.length - 1].file_id;
+        let media_data = null;
+        if (ctx.message.reply_to_message) {
+            const rm = ctx.message.reply_to_message;
+            if (rm.photo) media_data = JSON.stringify({ type: 'photo', file_id: rm.photo[rm.photo.length - 1].file_id });
+            else if (rm.sticker) media_data = JSON.stringify({ type: 'sticker', file_id: rm.sticker.file_id });
+            else if (rm.video) media_data = JSON.stringify({ type: 'video', file_id: rm.video.file_id });
+            else if (rm.animation) media_data = JSON.stringify({ type: 'animation', file_id: rm.animation.file_id });
         }
 
-        if (!msg && !photo_id) return ctx.reply('Format: /setwelcome Hello {name}!\n(You can also reply to a photo with /setwelcome to attach it!)');
+        if (!msg && !media_data) return ctx.reply('Format: /setwelcome Hello {name}!\n(You can also reply to a photo/sticker/gif with /setwelcome to attach it!)');
 
         const textToSave = msg || 'Welcome {name}!';
 
         ctx.db.run(`INSERT INTO group_settings (chat_id, welcome_message, welcome_photo_id) VALUES (?, ?, ?) 
                     ON CONFLICT(chat_id) DO UPDATE SET welcome_message=excluded.welcome_message, welcome_photo_id=excluded.welcome_photo_id`, 
-                    [ctx.chat.id, textToSave, photo_id], (err) => {
+                    [ctx.chat.id, textToSave, media_data], (err) => {
             if (err) return ctx.reply('Error saving settings.');
             ctx.reply('Welcome message updated! Turn it on with /togglewelcome if it is off.');
         });
